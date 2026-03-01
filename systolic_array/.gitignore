@@ -1,0 +1,13 @@
+bazel-*
+external/
+obj_dir/
+.vscode/
+.bazelrc
+.clangd
+.clang-tidy
+.clang-format
+.clang-tidy.yaml
+.clang-format.yaml
+.clang-tidy.yaml
+.cache
+compile_commands.json
