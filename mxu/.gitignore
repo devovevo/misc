@@ -11,3 +11,4 @@ obj_dir/
 .clang-tidy.yaml
 .cache
 compile_commands.json
+external
