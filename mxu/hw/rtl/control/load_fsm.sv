@@ -6,5 +6,5 @@ module load_fsm #(
     input logic clk,
     input logic rst,
 
-    
+
 );
