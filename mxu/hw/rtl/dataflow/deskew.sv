@@ -1,6 +1,6 @@
 module deskew #(
-    parameter SIZE = 3,
-    parameter AWIDTH = 32
+    parameter int SIZE = 3,
+    parameter int AWIDTH = 32
 )(
     // Constrol signals
     input logic clk,
@@ -28,14 +28,15 @@ module deskew #(
                 for (int d = 1; d < row; d++) begin
                     delay_regs[row][d] <= delay_regs[row][d - 1];
                 end
-            end 
+            end
         end
     end
 
-    assign deskewed_data_out[(SIZE - 1) * AWIDTH +: AWIDTH] = data_in[(SIZE - 1) * AWIDTH +: AWIDTH];
+    assign deskewed_data_out[(SIZE - 1) * AWIDTH +: AWIDTH] =
+        data_in[(SIZE - 1) * AWIDTH +: AWIDTH];
     genvar r;
     generate
-        for (r = 0; r < SIZE - 1; r++) begin : assign_out
+        for (r = 0; r < SIZE - 1; r++) begin : gen_assign_out
             assign deskewed_data_out[r * AWIDTH +: AWIDTH] = delay_regs[r][SIZE - 2 - r];
         end
     endgenerate

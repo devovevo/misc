@@ -1,0 +1,50 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_verilator//verilog:defs.bzl", "verilog_library")
+
+# 1. Group your SystemVerilog files into a logical hardware library
+verilog_library(
+    name = "pe_rtl",
+    srcs = ["pe.sv"],
+    visibility = ["//visibility:public"],
+)
+
+verilog_library(
+    name = "systolic_array_rtl",
+    srcs = ["pe.sv", "systolic_array.sv"],
+    visibility = ["//visibility:public"]
+)
+
+# 2. Define the Python test runner
+py_test(
+    name = "test_pe",
+    size = "small",
+    srcs = ["test_pe.py"],
+    # We pass the RTL library in as "data" so the Python script 
+    # and Cocotb can physically see the Verilog files in the Bazel sandbox.
+    data = [":pe_rtl"],
+    deps = [
+        "@pypi//cocotb",
+        "@pypi//cocotb_test",
+        "@pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_systolic_array",
+    size = "small",
+    srcs = ["test_systolic_array.py", "run_pytest.py"],
+    main = "run_pytest.py",
+    args = [
+        "-s",
+        "-v",
+        "$(location test_systolic_array.py)"
+    ],
+    data = ["pe.sv", "systolic_array.sv", "@verilator//:verilator"],
+    deps = [
+        "@pypi//cocotb",
+        "@pypi//cocotb_test",
+        "@pypi//pytest",
+        "@pypi//numpy",
+        "@bazel_tools//tools/python/runfiles"
+    ],
+)

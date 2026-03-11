@@ -1,22 +1,36 @@
 module(
-    name = "systolic_array",
-    version = "0.0.1",
+    name = "mxu",
+    version = "0.1.0",
 )
 
+# ==========================================
+# C++ Rules (Required for Verilator outputs)
+# ==========================================
+bazel_dep(name = "rules_cc", version = "0.2.17")
+
+# ==========================================
+# Python & UV Integration
+# ==========================================
+bazel_dep(name = "rules_python", version = "1.9.0")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    python_version = "3.12",
+    is_default = True,
+)
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pypi",
+    python_version = "3.12",
+    requirements_lock = "//:requirements_lock.txt",
+)
+use_repo(pip, "pypi")
+
+# ==========================================
+# Hardware Rules (Modern Verilator Toolchain)
+# ==========================================
 bazel_dep(name = "rules_verilator", version = "0.1.0")
 bazel_dep(name = "verilator", version = "5.044")
-bazel_dep(name = "rules_cc", version = "0.2.4")
 
-register_toolchains(
-    "@rules_verilator//verilator:verilator_toolchain",
-)
-
-# Hedron's Compile Commands Extractor for Bazel
-# Generates compile_commands.json for clangd (IDE autocomplete + linting)
-# https://github.com/hedronvision/bazel-compile-commands-extractor
-bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
-git_override(
-    module_name = "hedron_compile_commands",
-    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-    commit = "abb61a688167623088f8768cc9264798df6a9d10",
-)
+register_toolchains("@rules_verilator//verilator:verilator_toolchain")
