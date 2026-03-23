@@ -1,0 +1,10 @@
+plugin: google.cloud.gcp_compute
+projects:
+  - "misctesting-491021"
+auth_kind: application
+groups:
+  master: "'k8s-master' in (labels.role | default([]))"
+  workers: "'k8s-worker' in (labels.role | default([]))"
+compose:
+  ansible_host: networkInterfaces[0].accessConfigs[0].natIP
+  internal_ip: networkInterfaces[0].networkIP

@@ -1,0 +1,27 @@
+- name: Join Workers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Generate join command on master
+      when: inventory_hostname in groups['master']
+      command: kubeadm token create --print-join-command
+      register: master_join_output
+
+    - name: Store join command globally
+      when: inventory_hostname in groups['master']
+      set_fact:
+        global_join_token: "{{ master_join_output.stdout }}"
+      delegate_to: localhost
+      delegate_facts: true
+
+    - name: Run Kubeadm join on workers
+      when: inventory_hostname in groups['workers']
+      # We pull the token directly from the localhost's facts
+      command: "{{ hostvars['localhost']['global_join_token'] }}"
+      register: join_result
+      ignore_errors: yes
+
+    - name: Final Status
+      when: inventory_hostname in groups['workers']
+      debug:
+        msg: "Worker {{ inventory_hostname }} join status: {{ join_result.rc | default('Already Joined') }}"

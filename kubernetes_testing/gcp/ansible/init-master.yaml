@@ -1,0 +1,38 @@
+- name: Initialize Master
+  hosts: master
+  become: yes
+  tasks:
+    - name: Pre-init cleanup
+      command: kubeadm reset -f
+      ignore_errors: yes
+
+    - name: Initialize Kubeadm
+      command: >
+        kubeadm init 
+        --pod-network-cidr=192.168.0.0/16 
+        --apiserver-advertise-address={{ internal_ip }}
+        --apiserver-cert-extra-sans={{ ansible_host }}
+        --upload-certs
+      register: kubeadm_init
+
+    - name: Create .kube directory
+      file:
+        path: "/home/{{ ansible_facts['env']['SUDO_USER'] }}/.kube"
+        state: directory
+        owner: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        group: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        mode: '0755'
+
+    - name: Copy admin.conf
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_facts['env']['SUDO_USER'] }}/.kube/config"
+        remote_src: yes
+        owner: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        group: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        mode: '0600'
+
+    - name: Install Calico
+      become: yes
+      become_user: "{{ ansible_facts['env']['SUDO_USER'] }}"
+      command: kubectl apply -f https://docs.tigera.io/calico/latest/manifests/calico.yaml

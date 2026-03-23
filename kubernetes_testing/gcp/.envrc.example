@@ -1,0 +1,7 @@
+# 1. For OpenTofu and Ansible
+export GCP_PROJECT="FILL_ME"
+export GOOGLE_PROJECT=$GCP_PROJECT
+
+# 2. For Ansible's SSH Connection
+export ANSIBLE_REMOTE_USER="FILL_ME"
+export ANSIBLE_PRIVATE_KEY_FILE="~/.ssh/google_compute_engine"
