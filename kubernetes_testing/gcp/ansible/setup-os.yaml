@@ -1,0 +1,33 @@
+- name: Prepare OS and install K8s
+  hosts: master, workers
+  become: yes
+  tasks:
+    - name: Disable swap
+      command: swapoff -a
+
+    - name: Load kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop: [overlay, br_netfilter]
+
+    - name: Enable IP forwarding
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        reload: yes
+
+    - name: Install dependencies
+      apt:
+        name: ['containerd', 'curl', 'apt-transport-https', 'gpg']
+        state: present
+        update_cache: yes
+
+    - name: Install K8s binaries
+      shell: |
+        mkdir -p /etc/apt/keyrings
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' > /etc/apt/sources.list.d/kubernetes.list
+        apt-get update && apt-get install -y kubelet kubeadm kubectl
+        apt-mark hold kubelet kubeadm kubectl
