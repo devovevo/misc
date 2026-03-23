@@ -1,50 +1,59 @@
-load("@rules_python//python:defs.bzl", "py_test")
 load("@rules_verilator//verilog:defs.bzl", "verilog_library")
-
-# 1. Group your SystemVerilog files into a logical hardware library
-verilog_library(
-    name = "pe_rtl",
-    srcs = ["pe.sv"],
-    visibility = ["//visibility:public"],
-)
+load("@rules_verilator//verilator:defs.bzl", "verilator_cc_library")
 
 verilog_library(
-    name = "systolic_array_rtl",
+    name = "systolic_sv",
     srcs = ["pe.sv", "systolic_array.sv"],
-    visibility = ["//visibility:public"]
 )
 
-# 2. Define the Python test runner
-py_test(
+verilator_cc_library(
+    name = "pe_cc",
+    module = ":systolic_sv",
+    module_top = "pe",
+    vopts=["--trace-fst", "--trace-structs"]
+)
+
+cc_test(
     name = "test_pe",
     size = "small",
-    srcs = ["test_pe.py"],
-    # We pass the RTL library in as "data" so the Python script 
-    # and Cocotb can physically see the Verilog files in the Bazel sandbox.
-    data = [":pe_rtl"],
+    srcs = ["test_pe.cpp"],
+    copts = ["-std=c++17"],
     deps = [
-        "@pypi//cocotb",
-        "@pypi//cocotb_test",
-        "@pypi//pytest",
-    ],
-)
+        ":pe_cc",
+        "@googletest//:gtest_main",
+        "@eigen//:eigen",
+        "//hw/shared:verilator_pins",
+        "//hw/shared:verilator_test_fixture"
+    ]
+)    
 
-py_test(
-    name = "test_systolic_array",
-    size = "small",
-    srcs = ["test_systolic_array.py", "run_pytest.py"],
-    main = "run_pytest.py",
-    args = [
-        "-s",
-        "-v",
-        "$(location test_systolic_array.py)"
-    ],
-    data = ["pe.sv", "systolic_array.sv", "@verilator//:verilator"],
-    deps = [
-        "@pypi//cocotb",
-        "@pypi//cocotb_test",
-        "@pypi//pytest",
-        "@pypi//numpy",
-        "@bazel_tools//tools/python/runfiles"
-    ],
-)
+# BAZEL MAGIC: Automatically stamp out tests for 3x3, 4x4, and 8x8 arrays!
+[
+    (
+        verilator_cc_library(
+            name = "systolic_cc_size_{}".format(size),
+            module = ":systolic_sv",
+            module_top = "systolic_array",
+            # Pass the parameter directly to Verilator
+            vopts = ["-GSIZE={}".format(size), "--trace-fst", "--trace-structs"], 
+        ),
+        cc_test(
+            name = "test_systolic_size_{}".format(size),
+            size = "small",
+            srcs = ["test_systolic_array.cpp"],
+            # Inject the SIZE macro into the C++ compiler so the test knows the size!
+            copts = [
+                "-DSIZE={}".format(size), 
+                "-std=c++17"
+            ],
+            deps = [
+                ":systolic_cc_size_{}".format(size),
+                "@googletest//:gtest_main",
+                "@eigen//:eigen", # Bring in the Eigen matrix library
+                "//hw/shared:verilator_pins",
+                "//hw/shared:verilator_test_fixture"
+            ],
+        )
+    )
+    for size in [3, 4, 8] # Add any sizes you want to test here!
+]

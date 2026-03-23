@@ -15,13 +15,13 @@ interface sram_if #(
 
     // Controller - CPU or DMA
     modport controller(
-        input rdata,
+        input clk, rdata,
         output cs, we, addr, wdata
     );
 
     // Memory - Actual SRAM interface
     modport memory(
-        input cs, we, addr, wdata,
+        input clk, cs, we, addr, wdata,
         output rdata
     );
 

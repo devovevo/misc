@@ -2,8 +2,8 @@ module pe #(
     parameter int DATA_WIDTH = 8,
     parameter int ACC_WIDTH = 32
 )(
-    input logic clock,
-    input logic rst,
+    input logic clk,
+    input logic rst_n,
 
     input logic [DATA_WIDTH - 1 : 0] left_in,
     input logic [ACC_WIDTH - 1 : 0] top_in,
@@ -28,8 +28,8 @@ module pe #(
     assign bottom_shadow_out = shadow_weight;
     assign right_weight_switch_out = right_weight_switch;
 
-    always_ff @(posedge clock) begin
-        if (rst) begin
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
             weight <= '0;
             shadow_weight <= '0;
             value <= '0;

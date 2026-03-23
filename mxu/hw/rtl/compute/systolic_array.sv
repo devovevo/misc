@@ -3,8 +3,8 @@ module systolic_array #(
     parameter int DATA_WIDTH = 8,
     parameter int ACC_WIDTH = 32
 )(
-    input  logic clock,
-    input  logic rst,
+    input  logic clk,
+    input  logic rst_n,
 
     // Flattened inputs from the C++ Testbench
     input logic [(SIZE * DATA_WIDTH) - 1 : 0] left_in,
@@ -54,8 +54,8 @@ module systolic_array #(
                     .DATA_WIDTH(DATA_WIDTH),
                     .ACC_WIDTH(ACC_WIDTH)
                 ) pe_inst (
-                    .clock(clock),
-                    .rst(rst),
+                    .clk(clk),
+                    .rst_n(rst_n),
 
                     .left_in(pe_left_in),
                     .left_weight_switch_in(pe_left_switch_in),

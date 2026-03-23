@@ -1,0 +1,11 @@
+cc_library(
+    name = "verilator_pins",
+    hdrs = ["verilator_pins.h"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "verilator_test_fixture",
+    hdrs = ["verilator_test_fixture.h"],
+    visibility = ["//visibility:public"]
+)

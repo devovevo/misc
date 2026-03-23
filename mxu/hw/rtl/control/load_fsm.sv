@@ -8,11 +8,14 @@ module load_fsm #(
     // Control pin
     input logic clk,
     input logic rst_n,
-    
+
     // Fifo control
     input logic fifo_empty,
     input weight_load_cmd_t fifo_data_out,
     output logic fifo_pop,
+
+    // DMA control signal
+    input logic dma_done_pulse,
 
     // SRAM driver
     output logic sram_cs,
@@ -23,7 +26,7 @@ module load_fsm #(
     output logic force_zero,
     output logic load_done_pulse
 );
-    typedef enum logic [1:0] {IDLE, POPPING, LOADING, PADDING} state_t;
+    typedef enum logic [2:0] {IDLE, POPPING, WAITING, LOADING, PADDING} state_t;
     state_t state, next_state;
 
     logic [ADDR_WIDTH - 1: 0] current_addr;
@@ -45,7 +48,7 @@ module load_fsm #(
             done_pipeline <= '0;
         end else begin
             valid_pipeline <= {valid_pipeline[READ_LATENCY - 2 : 0], fsm_shift_valid};
-            zero_pipeline <= {zero_pipeline[READ_LATENCY - 2 : 0, fsm_force_zero};
+            zero_pipeline <= {zero_pipeline[READ_LATENCY - 2 : 0], fsm_force_zero};
             done_pipeline <= {done_pipeline[READ_LATENCY - 2 : 0], fsm_load_done};
         end
     end
@@ -84,7 +87,7 @@ module load_fsm #(
         fsm_force_zero = 1'b0;
         fsm_load_done = 1'b0;
 
-        case (state) begin
+        unique case (state)
             IDLE: begin
                 if (!fifo_empty) begin
                     fifo_pop = 1'b1;
@@ -93,12 +96,25 @@ module load_fsm #(
             end
 
             POPPING: begin
-                if (fifo_data_out.row_count > 0) begin
+                if (fifo_data_out.wait_for_dma && !dma_done_pulse)
+                    next_state = WAITING;
+                else if (fifo_data_out.row_count > 0) begin
                     next_state = LOADING;
-                else begin
+                end else begin
                     next_state = PADDING;
                 end
             end
+
+            WAITING: begin
+                if (dma_done_pulse) begin
+                    if (sram_rows_remaining > 0) begin
+                        next_state = LOADING;
+                    end else begin
+                        next_state = PADDING;
+                    end
+                end else begin
+                    next_state = WAITING;
+                end
 
             LOADING: begin
                 sram_cs = 1'b1;
@@ -121,6 +137,6 @@ module load_fsm #(
                     fsm_load_done = 1'b1;
                 end
             end
-        end
+        endcase
     end
 endmodule
