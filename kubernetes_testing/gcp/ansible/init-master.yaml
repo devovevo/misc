@@ -4,11 +4,15 @@
   vars:
     # Explicitly define the user who should get kubectl access. 
     # Change this if you aren't logging in as evanvera.
-    k8s_user: evanvera 
+    k8s_user: evan-vera 
 
   tasks:
     - name: Pre-init cleanup
       command: kubeadm reset -f
+      ignore_errors: yes
+
+    - name: Clear CNI
+      command: rm -rf /etc/cni/net.d
       ignore_errors: yes
 
     - name: Initialize Kubeadm
@@ -41,6 +45,10 @@
       become: yes
       become_user: "{{ k8s_user }}"
       command: kubectl apply -f https://docs.tigera.io/calico/latest/manifests/calico.yaml
+      retries: 10
+      delay: 3
+      register: result
+      until: result.rc == 0
       environment:
         # Pass the KUBECONFIG explicitly just to be absolutely certain
         # the command module knows where to look.
