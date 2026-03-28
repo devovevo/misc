@@ -4,22 +4,17 @@
   tasks:
     - name: Generate join command on master
       when: inventory_hostname in groups['master']
-      command: kubeadm token create --print-join-command
+      command: kubeadm token create --print-join-command --kubeconfig /etc/kubernetes/admin.conf
       register: master_join_output
 
-    - name: Store join command globally
-      when: inventory_hostname in groups['master']
-      set_fact:
-        global_join_token: "{{ master_join_output.stdout }}"
-      delegate_to: localhost
-      delegate_facts: true
+    # Notice we completely deleted the "Store join command globally" task!
 
     - name: Run Kubeadm join on workers
       when: inventory_hostname in groups['workers']
-      # We pull the token directly from the localhost's facts
-      command: "{{ hostvars['localhost']['global_join_token'] }}"
+      # We pull the stdout directly from the first master node in your inventory group
+      command: "{{ hostvars[groups['master'][0]]['master_join_output']['stdout'] }}"
       register: join_result
-      ignore_errors: yes
+      ignore_errors: yes 
 
     - name: Final Status
       when: inventory_hostname in groups['workers']

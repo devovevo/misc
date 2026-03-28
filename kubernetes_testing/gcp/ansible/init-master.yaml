@@ -1,6 +1,11 @@
 - name: Initialize Master
   hosts: master
   become: yes
+  vars:
+    # Explicitly define the user who should get kubectl access. 
+    # Change this if you aren't logging in as evanvera.
+    k8s_user: evanvera 
+
   tasks:
     - name: Pre-init cleanup
       command: kubeadm reset -f
@@ -17,22 +22,26 @@
 
     - name: Create .kube directory
       file:
-        path: "/home/{{ ansible_facts['env']['SUDO_USER'] }}/.kube"
+        path: "/home/{{ k8s_user }}/.kube"
         state: directory
-        owner: "{{ ansible_facts['env']['SUDO_USER'] }}"
-        group: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
         mode: '0755'
 
     - name: Copy admin.conf
       copy:
         src: /etc/kubernetes/admin.conf
-        dest: "/home/{{ ansible_facts['env']['SUDO_USER'] }}/.kube/config"
+        dest: "/home/{{ k8s_user }}/.kube/config"
         remote_src: yes
-        owner: "{{ ansible_facts['env']['SUDO_USER'] }}"
-        group: "{{ ansible_facts['env']['SUDO_USER'] }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
         mode: '0600'
 
     - name: Install Calico
       become: yes
-      become_user: "{{ ansible_facts['env']['SUDO_USER'] }}"
+      become_user: "{{ k8s_user }}"
       command: kubectl apply -f https://docs.tigera.io/calico/latest/manifests/calico.yaml
+      environment:
+        # Pass the KUBECONFIG explicitly just to be absolutely certain
+        # the command module knows where to look.
+        KUBECONFIG: "/home/{{ k8s_user }}/.kube/config"

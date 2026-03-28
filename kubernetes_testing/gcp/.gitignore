@@ -1,3 +1,6 @@
 .envrc
+terraform.tfstate
+terraform.tfstate.backup
 .venv/
 .terraform/
+config

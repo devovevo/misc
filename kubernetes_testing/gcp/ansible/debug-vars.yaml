@@ -8,3 +8,4 @@
           - "Node Name: {{ inventory_hostname }}"
           - "Public IP (ansible_host): {{ ansible_host }}"
           - "Internal IP (internal_ip): {{ internal_ip }}"
+          - "SUDO user : {{ ansible_facts['env']['SUDO_USER'] }}"
