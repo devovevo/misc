@@ -31,3 +31,35 @@
         echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' > /etc/apt/sources.list.d/kubernetes.list
         apt-get update && apt-get install -y kubelet kubeadm kubectl
         apt-mark hold kubelet kubeadm kubectl
+
+    - name: Create containerd config dir
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Generate default containerd config
+      shell: containerd config default > /etc/containerd/config.toml
+
+    - name: Get required sandbox (pause) image from kubeadm
+      shell: kubeadm config images list | grep pause
+      register: kubeadm_pause_image
+      changed_when: false
+
+    - name: Update sandbox image in containerd config dynamically
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'sandbox_image = ".*"'
+        replace: 'sandbox_image = "{{ kubeadm_pause_image.stdout }}"'
+
+    - name: Enable SystemdCgroup in containerd config
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+
+    - name: Restart and enable containerd
+      systemd:
+        name: containerd
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
