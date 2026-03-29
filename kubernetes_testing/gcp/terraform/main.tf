@@ -18,6 +18,7 @@ resource "google_compute_subnetwork" "k8s_subnet" {
 resource "google_compute_firewall" "k8s_allow_internal" {
   name    = "prod-k8s-internal"
   network = google_compute_network.k8s_vpc.id
+  allow { protocol = "4" }
   allow { protocol = "tcp" }
   allow { protocol = "udp" }
   allow { protocol = "icmp" }
@@ -43,6 +44,8 @@ resource "google_compute_instance" "control_plane" {
   labels = {
     role = "k8s-master"
   }
+
+  can_ip_forward = true
 
   boot_disk {
     initialize_params {
@@ -75,6 +78,8 @@ resource "google_compute_instance" "workers" {
   labels = {
     role = "k8s-worker"
   }
+
+  can_ip_forward = true
 
   boot_disk {
     initialize_params {

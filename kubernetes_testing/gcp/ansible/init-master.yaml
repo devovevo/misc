@@ -1,6 +1,6 @@
 - name: Initialize Master
   hosts: master
-  become: yes
+  become: true
   vars:
     # Explicitly define the user who should get kubectl access. 
     # Change this if you aren't logging in as evanvera.
@@ -11,8 +11,8 @@
       command: kubeadm reset -f
       ignore_errors: yes
 
-    - name: Clear CNI
-      command: rm -rf /etc/cni/net.d
+    - name: Clear CNI contents (preserve directory for inotify)
+      shell: rm -rf /etc/cni/net.d/*
       ignore_errors: yes
 
     - name: Initialize Kubeadm
@@ -40,16 +40,43 @@
         owner: "{{ k8s_user }}"
         group: "{{ k8s_user }}"
         mode: '0600'
-
-    - name: Install Calico
-      become: yes
+    
+    - name: Install Custom Resource Definitions (CRDs) Operator
+      become: true
       become_user: "{{ k8s_user }}"
-      command: kubectl apply -f https://docs.tigera.io/calico/latest/manifests/calico.yaml
-      retries: 10
-      delay: 3
-      register: result
-      until: result.rc == 0
+      command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.4/manifests/operator-crds.yaml
+      register: crds_operator_result
+      failed_when:
+        - crds_operator_result.rc != 0
+        - "'AlreadyExists' not in crds_operator_result.stderr"
       environment:
-        # Pass the KUBECONFIG explicitly just to be absolutely certain
-        # the command module knows where to look.
+        KUBECONFIG: "/home/{{ k8s_user }}/.kube/config"
+
+    - name: Install Tigera Operator (Modern Calico Standard)
+      become: true
+      become_user: "{{ k8s_user }}"
+      command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.4/manifests/tigera-operator.yaml
+      register: tigera_operator_result
+      failed_when: 
+        - tigera_operator_result.rc != 0
+        - "'AlreadyExists' not in tigera_operator_result.stderr"
+      environment:
+        KUBECONFIG: "/home/{{ k8s_user }}/.kube/config"
+
+    - name: Install Calico Custom Resources
+      become: true
+      become_user: "{{ k8s_user }}"
+      command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.4/manifests/custom-resources.yaml
+      register: custom_resources_result
+      failed_when: 
+        - custom_resources_result.rc != 0
+        - "'AlreadyExists' not in custom_resources_result.stderr"
+      environment:
+        KUBECONFIG: "/home/{{ k8s_user }}/.kube/config"
+
+    - name: Wait for the Control Plane to become Ready
+      become: true
+      become_user: "{{ k8s_user }}"
+      command: kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      environment:
         KUBECONFIG: "/home/{{ k8s_user }}/.kube/config"
