@@ -1,16 +1,19 @@
-#include <utility>
+#include <optional>
+#include <atomic>
+
+using namespace std;
 
 template<typename T>
 class Stack {
 	struct Node {
 		T data;
 		Node* next;
-	}
+	};
 
 	struct TaggedHead {
 		Node* head;
 		size_t seq;
-	}
+	};
 
 	private:
 		atomic<TaggedHead> head;
