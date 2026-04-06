@@ -1,6 +1,5 @@
 #include <__clang_cuda_builtin_vars.h>
 #include <__clang_cuda_runtime_wrapper.h>
-#include <limits>
 #include <stdio.h>
 #include <mma.h>
 #include <cuda/pipeline>
@@ -23,6 +22,7 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
     T* q = m;
     T* k = q + BLOCK_SIZE_M * head_dim;
     T* v = k + BLOCK_SIZE_N * head_dim * PIPELINE_LEN;
+    T* o = v + BLOCK_SIZE_N * head_dim * PIPELINE_LEN;
 
     cg::thread_block block = cg::this_thread_block();
 
@@ -70,7 +70,6 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
         wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, T> acc_s;
         wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, T> acc_o;
 
-        wmma::fill_fragment(acc_o, 0);
         T m = -cuda::std::numeric_limits<T>::infinity();
         T l = 0;
 
@@ -80,12 +79,14 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
         for (int block_j = 0; block_j < seq_len; block_j += BLOCK_SIZE_N) {
             k_pipe.consumer_wait();
 
-            T* k_curr = k[tile_elems * (read_idx % PIPELINE_LEN)];
+            T* k_curr = &k[tile_elems * (read_idx % PIPELINE_LEN)];
             k_pipe.consumer_wait();
 
             const int warp_idx = threadIdx.x / WARP_SIZE;
             const int warp_row_offset = warp_idx * WMMA_M;
 
+            // We assume that we have enough warps where 
+            // warps in block * WMMA_M = BLOCK_M
             for (int warp_j = 0; warp_j < BLOCK_SIZE_N; warp_j += WMMA_N) {
                 wmma::fill_fragment(acc_s, 0);
 
@@ -110,17 +111,44 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
 
             T* row_ptr = k + warp_row_offset + local_row;
 
-            T local_m = -cuda::std::numeric_limits<T>::infinity();
-            for (int col = local_col_offset; col < BLOCK_SIZE_M; col += threads_per_row) {
-                local_m = fmaxf(local_m, row_ptr[col]);
+            T m_local = -cuda::std::numeric_limits<T>::infinity();
+            for (int col = local_col_offset; col < BLOCK_SIZE_N; col += threads_per_row) {
+                m_local = fmaxf(m_local, row_ptr[col]);
             }
 
             for (int offset = threads_per_row / 2; offset > 0; offset /= 2) {
-                T neighbor_m = __shuffle_down_sync(0xFFFFFFFF, local_m, offset, threads_per_row);
-                local_m = fmaxf(local_m, neighbor_m);
+                T m_neighbor = __shuffle_down_sync(0xFFFFFFFF, m_local, offset, threads_per_row);
+                m_local = fmaxf(m_local, m_neighbor);
             }
 
-            T row_m = __shfl_sync(0xFFFFFFFF, local_m, 0, threads_per_row);
+            T m_warp = __shfl_sync(0xFFFFFFFF, m_local, 0, threads_per_row);
+            T m_new = fmaxf(m_warp, m);
+
+            T l_local = 0;
+            for (int col = local_col_offset; col < BLOCK_SIZE_N; col += threads_per_row) {
+                T p = expf(row_ptr[col] - m_new);
+                row_ptr[col] = p;
+                l_local += p;
+            }
+
+            for (int offset = threads_per_row / 2; offset > 0; offset /= 2) {
+                T l_neighbor = __shuffle_down_sync(0xFFFFFFFF, l_local, offset, threads_per_row);
+                l_local += l_neighbor;
+            }
+
+            T l_new = l * expf(m - m_new) + l_local;
+
+            T* o_row_ptr = o + (warp_row_offset + local_row) * head_dim;
+            for (int d = local_col_offset; d < head_dim; d += threads_per_row) {
+               o_row_ptr[d] 
+
+            for (int warp_j = 0; warp_j < head_dim; warp_j += WMMA_N) {
+                for (int warp_k = 0; warp_k < BLOCK_SIZE_N; warp_k += WMMA_K) {
+                    wmma::load_matrix_sync(k_frag, k + (warp_row_offset * head_dim) + warp_k, head_dim);
+                    wmma::load_matrix_sync(v_frag, k + (warp_j * head_dim) + warp_k, head_dim);
+                    wmma::mma_sync(acc_o, q_frag, k_frag, acc_o);
+                }
+            }
         }
     }
 }
