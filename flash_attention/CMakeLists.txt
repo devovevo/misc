@@ -4,6 +4,14 @@ project(FlashAttention LANGUAGES CXX CUDA)
 add_executable(flash_attention_cuda flash_attention.cu)
 add_executable(flash_attention_cpp flash_attention.cpp)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
 # 1. Apply your custom DEBUG_MODE macro to both targets in Debug mode
 target_compile_definitions(
     flash_attention_cpp
