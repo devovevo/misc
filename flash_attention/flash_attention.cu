@@ -70,6 +70,8 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
         wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, T> acc_s;
         wmma::fragment<wmma::accumulator, WMMA_M, WMMA_N, WMMA_K, T> acc_o;
 
+        // We assume each thread owns a row. This m and l
+        // are specific to this thread's row
         T m = -cuda::std::numeric_limits<T>::infinity();
         T l = 0;
 
@@ -84,69 +86,54 @@ __global__ void flash_attention(const T* Q, const T* K, const T* V, T* O, int se
 
             const int warp_idx = threadIdx.x / WARP_SIZE;
             const int warp_row_offset = warp_idx * WMMA_M;
+         
+            // Since the WMMA_M dimension might not be equal to warp size and
+            // we assume one row per thread, we iterate over block WMMA rows
+            // to get a full warp of rows done with WMMA
+            for (int warp_i = 0; warp_i < BLOCK_SIZE_M; warp_i += WMMA_M) {
+                for (int warp_j = 0; warp_j < BLOCK_SIZE_N; warp_j += WMMA_N) {
+                    wmma::fill_fragment(acc_s, 0);
 
-            // We assume that we have enough warps where 
-            // warps in block * WMMA_M = BLOCK_M
-            for (int warp_j = 0; warp_j < BLOCK_SIZE_N; warp_j += WMMA_N) {
-                wmma::fill_fragment(acc_s, 0);
+                    for (int warp_k = 0; warp_k < head_dim; warp_k += WMMA_K) {
+                        wmma::load_matrix_sync(q_frag, q + (warp_row_offset + warp_i) * head_dim + warp_k, head_dim);
+                        wmma::load_matrix_sync(k_frag, k + (warp_j * head_dim) + warp_k, head_dim);
+                        wmma::mma_sync(acc_s, q_frag, k_frag, acc_s);
+                    }
 
-                for (int warp_k = 0; warp_k < head_dim; warp_k += WMMA_K) {
-                    wmma::load_matrix_sync(q_frag, q + (warp_row_offset * head_dim) + warp_k, head_dim);
-                    wmma::load_matrix_sync(k_frag, k + (warp_j * head_dim) + warp_k, head_dim);
-                    wmma::mma_sync(acc_s, q_frag, k_frag, acc_s);
+                    // We store the ouput in K since we no longer need it
+                    // Assumes head_dim > BLOCK_SIZE_N which is reasonable
+                    T* warp_write_ptr = k_curr + (warp_row_offset + warp_i) * head_dim + warp_j;
+                    wmma::store_matrix_sync(warp_write_ptr, acc_s, BLOCK_SIZE_N, wmma::mem_row_major); 
                 }
-
-                // We store the ouput in K since we no longer need it
-                // Assumes head_dim > BLOCK_SIZE_N which is reasonable
-                T* warp_write_ptr = k_curr + (warp_row_offset * head_dim) + warp_j;
-                wmma::store_matrix_sync(warp_write_ptr, acc_s, BLOCK_SIZE_N, wmma::mem_row_major); 
             }
 
-            const int rows_per_warp = WMMA_M;
-            const int threads_per_row = WARP_SIZE / rows_per_warp;
-            const int lane_id = threadIdx.x % WARP_SIZE;
-
-            const int local_row = lane_id / threads_per_row;
-            const int local_col_offset = lane_id % threads_per_row;
-
-            T* row_ptr = k + warp_row_offset + local_row;
-
+            // Since each thread owns one row, we can find local
+            // max easily
             T m_local = -cuda::std::numeric_limits<T>::infinity();
-            for (int col = local_col_offset; col < BLOCK_SIZE_N; col += threads_per_row) {
-                m_local = fmaxf(m_local, row_ptr[col]);
+            for (int j = 0; j < BLOCK_SIZE_N; j++) {
+                m_local = fmaxf(k_curr[threadIdx.x * BLOCK_SIZE_N + j], m_local);
             }
 
-            for (int offset = threads_per_row / 2; offset > 0; offset /= 2) {
-                T m_neighbor = __shuffle_down_sync(0xFFFFFFFF, m_local, offset, threads_per_row);
-                m_local = fmaxf(m_local, m_neighbor);
-            }
-
-            T m_warp = __shfl_sync(0xFFFFFFFF, m_local, 0, threads_per_row);
-            T m_new = fmaxf(m_warp, m);
-
+            // We get new max by looking at max of local and new
+            // We then use the new max to find the right softmax
+            // for our S block which is now stored in K
+            T m_new = fmaxf(m_local, m_new);
             T l_local = 0;
-            for (int col = local_col_offset; col < BLOCK_SIZE_N; col += threads_per_row) {
-                T p = expf(row_ptr[col] - m_new);
-                row_ptr[col] = p;
+            for (int j = 0; j < head_dim; j++) {
+                T p = exp(k_curr[threadIdx.x * head_dim + j] - m_new);
+                k_curr[threadIdx.x * head_dim + j] = p;
                 l_local += p;
             }
 
-            for (int offset = threads_per_row / 2; offset > 0; offset /= 2) {
-                T l_neighbor = __shuffle_down_sync(0xFFFFFFFF, l_local, offset, threads_per_row);
-                l_local += l_neighbor;
-            }
-
-            T l_new = l * expf(m - m_new) + l_local;
-
-            T* o_row_ptr = o + (warp_row_offset + local_row) * head_dim;
-            for (int d = local_col_offset; d < head_dim; d += threads_per_row) {
-               o_row_ptr[d] 
-
-            for (int warp_j = 0; warp_j < head_dim; warp_j += WMMA_N) {
-                for (int warp_k = 0; warp_k < BLOCK_SIZE_N; warp_k += WMMA_K) {
-                    wmma::load_matrix_sync(k_frag, k + (warp_row_offset * head_dim) + warp_k, head_dim);
-                    wmma::load_matrix_sync(v_frag, k + (warp_j * head_dim) + warp_k, head_dim);
-                    wmma::mma_sync(acc_o, q_frag, k_frag, acc_o);
+            T l_new = l * exp(m - m_new) + l_local;
+            
+            for (int warp_i = 0; warp_i < WARP_SIZE; warp_i += WMMA_M) {
+                for (int warp_j = 0; warp_j < head_dim; warp_j += WMMA_N) {
+                    for (int warp_k = 0; warp_k < BLOCK_SIZE_N; warp_k += WMMA_K) {
+                        wmma::load_matrix_sync(k_frag, k + (warp_row_offset * head_dim) + warp_k, head_dim);
+                        wmma::load_matrix_sync(v_frag, k + (warp_j * head_dim) + warp_k, head_dim);
+                        wmma::mma_sync(acc_o, q_frag, k_frag, acc_o);
+                    }
                 }
             }
         }
