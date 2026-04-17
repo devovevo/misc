@@ -39,7 +39,7 @@ use_repo(pip, "pypi")
 # ==========================================
 # Hardware Rules (Modern Verilator Toolchain)
 # ==========================================
-bazel_dep(name = "rules_verilator", version = "0.2.0")
+bazel_dep(name = "rules_verilator", version = "0.3.2")
 bazel_dep(name = "verilator", version = "5.044")
 
 register_toolchains("@rules_verilator//verilator:verilator_toolchain")
