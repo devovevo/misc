@@ -12,7 +12,7 @@ find-libpython==0.5.1
     #   cocotb-test
 iniconfig==2.3.0
     # via pytest
-numpy==2.4.2
+numpy==2.4.4
     # via mxu (pyproject.toml)
 packaging==26.0
     # via pytest
