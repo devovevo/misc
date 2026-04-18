@@ -1,16 +1,23 @@
-load("@rules_verilator//verilog:defs.bzl", "verilog_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_verilator//verilator:defs.bzl", "verilator_cc_library")
+load("@rules_verilator//verilog:defs.bzl", "verilog_library")
 
 verilog_library(
     name = "systolic_sv",
-    srcs = ["pe.sv", "systolic_array.sv"],
+    srcs = [
+        "pe.sv",
+        "systolic_array.sv",
+    ],
 )
 
 verilator_cc_library(
     name = "pe_cc",
     module = ":systolic_sv",
     module_top = "pe",
-    vopts=["--trace-fst", "--trace-structs"]
+    vopts = [
+        "--trace-fst",
+        "--trace-structs",
+    ],
 )
 
 cc_test(
@@ -20,12 +27,12 @@ cc_test(
     copts = ["-std=c++17"],
     deps = [
         ":pe_cc",
-        "@googletest//:gtest_main",
-        "@eigen//:eigen",
         "//hw/shared:verilator_pins",
-        "//hw/shared:verilator_test_fixture"
-    ]
-)    
+        "//hw/shared:verilator_test_fixture",
+        "@eigen",
+        "@googletest//:gtest_main",
+    ],
+)
 
 # BAZEL MAGIC: Automatically stamp out tests for 3x3, 4x4, and 8x8 arrays!
 [
@@ -35,7 +42,11 @@ cc_test(
             module = ":systolic_sv",
             module_top = "systolic_array",
             # Pass the parameter directly to Verilator
-            vopts = ["-GSIZE={}".format(size), "--trace-fst", "--trace-structs"], 
+            vopts = [
+                "-GSIZE={}".format(size),
+                "--trace-fst",
+                "--trace-structs",
+            ],
         ),
         cc_test(
             name = "test_systolic_size_{}".format(size),
@@ -43,17 +54,21 @@ cc_test(
             srcs = ["test_systolic_array.cpp"],
             # Inject the SIZE macro into the C++ compiler so the test knows the size!
             copts = [
-                "-DSIZE={}".format(size), 
-                "-std=c++17"
+                "-DSIZE={}".format(size),
+                "-std=c++17",
             ],
             deps = [
                 ":systolic_cc_size_{}".format(size),
-                "@googletest//:gtest_main",
-                "@eigen//:eigen", # Bring in the Eigen matrix library
                 "//hw/shared:verilator_pins",
-                "//hw/shared:verilator_test_fixture"
+                "//hw/shared:verilator_test_fixture",
+                "@eigen",  # Bring in the Eigen matrix library
+                "@googletest//:gtest_main",
             ],
-        )
+        ),
     )
-    for size in [3, 4, 8] # Add any sizes you want to test here!
+    for size in [
+        3,
+        4,
+        8,
+    ]  # Add any sizes you want to test here!
 ]

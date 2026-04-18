@@ -35,16 +35,18 @@ TEST_F(PETest, RandomLoadLifecycle) {
         
         tick(dut->clk);
 
-        vector<uint32_t> bottom_shadow_out = get_pin(dut->bottom_shadow_out, 1, DATA_WIDTH);
+        vector<uint32_t> bottom_shadow_out;
+        get_pin(dut->bottom_shadow_out, bottom_shadow_out, 1, DATA_WIDTH);
         EXPECT_EQ(rand_int, bottom_shadow_out[0]);
 
-        top_shadow_in[0] = rand_int + 1;
+        int max_value = 1 << DATA_WIDTH;
+        top_shadow_in[0] = (rand_int + 1) % max_value;
         set_pin(dut->top_shadow_in, top_shadow_in, DATA_WIDTH);
 
         tick(dut->clk);
 
-        bottom_shadow_out = get_pin(dut->bottom_shadow_out, 1, DATA_WIDTH);
-        EXPECT_EQ(rand_int + 1, bottom_shadow_out[0]);
+        get_pin(dut->bottom_shadow_out, bottom_shadow_out, 1, DATA_WIDTH);
+        EXPECT_EQ((rand_int + 1) % max_value, bottom_shadow_out[0]);
 
         tick(dut->clk);
     }

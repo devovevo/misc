@@ -1,0 +1,39 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_verilator//verilator:defs.bzl", "verilator_cc_library")
+load("@rules_verilator//verilog:defs.bzl", "verilog_library")
+
+verilog_library(
+    name = "control_sv",
+    srcs = [
+        "//hw/packages:mxu_pkg.sv",
+        "//hw/rtl/memory:flip_flop_sram.sv",
+        "compute_fsm.sv",
+        "load_fsm.sv",
+        "load_unit_tb_top.sv",
+    ],
+)
+
+verilator_cc_library(
+    name = "load_fsm_tb_top_cc",
+    module = ":control_sv",
+    module_top = "load_unit_tb_top",
+    vopts = [
+        "--trace-fst",
+        "--trace-structs",
+        "-Wno-WIDTHEXPAND",
+    ],
+)
+
+cc_test(
+    name = "test_load_unit_tb_top",
+    size = "small",
+    srcs = ["test_load_unit_tb_top.cpp"],
+    copts = ["-std=c++17", "-DSIZE=3"],
+    deps = [
+        ":load_fsm_tb_top_cc",
+        "//hw/shared:verilator_pins",
+        "//hw/shared:verilator_test_fixture",
+        "@eigen",
+        "@googletest//:gtest_main",
+    ],
+)

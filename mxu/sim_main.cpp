@@ -46,13 +46,13 @@ int main(int argc, char** argv) {
     }
 
     // Initialize
-    dut->clock = 0; dut->rst = 1;
+    dut->clk = 0; dut->rst_n = 0;
     dut->left_in = 0; dut->left_switch_in = 0;
     dut->top_shadow_in = 0; dut->top_load_enable_in = 0;
     for(int i=0; i<SIZE; i++) dut->top_in[i] = 0;
     
-    dut->eval(); dut->clock = 1; dut->eval();
-    dut->clock = 0; dut->rst = 0; dut->eval();
+    dut->eval(); dut->clk = 1; dut->eval();
+    dut->clk = 0; dut->rst_n = 1; dut->eval();
 
     std::cout << "--- STARTING SIMULATION ---" << std::endl;
     int cycle = 0;
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     // --- PHASE 1: POPULATION (The Shadow Shift Register) ---
     std::cout << "\n[Phase 1: Loading Shadow Weights]" << std::endl;
     for (int load_step = 0; load_step < SIZE; load_step++) {
-        dut->clock = 0;
+        dut->clk = 0;
         dut->top_load_enable_in = 0x7; // Broadcast to all columns
         
         uint32_t packed_shadow = 0;
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
         }
         dut->top_shadow_in = packed_shadow;
 
-        dut->eval(); dut->clock = 1; dut->eval();
+        dut->eval(); dut->clk = 1; dut->eval();
         std::cout << "Cycle " << cycle << ": Loaded shadow row " << row_to_load << std::endl;
         cycle++;
     }
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 
     // Run enough cycles to drain the pipeline
     for (int compute_step = 0; compute_step < (SIZE * SIZE); compute_step++) {
-        dut->clock = 0;
+        dut->clk = 0;
         uint32_t packed_left_in = 0;
         uint8_t packed_switch = 0;
         
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
         dut->left_in = packed_left_in;
         dut->left_switch_in = packed_switch;
 
-        dut->eval(); dut->clock = 1; dut->eval();
+        dut->eval(); dut->clk = 1; dut->eval();
 
         std::cout << "Cycle " << std::setw(2) << cycle << " | Switch Signal: " << (int)dut->left_switch_in << " | Bottom Outputs: [ ";
         for (int col = 0; col < SIZE; col++) {

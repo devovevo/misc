@@ -9,19 +9,19 @@ module compute_fsm#(
     input logic rst_n,
 
     // FIFO control
-    input logic fifo_empty,
-    input activation_compute_command_t fifo_out,
-    output fifo_pop,
+    input logic fifo_empty_in,
+    input activation_compute_command_t fifo_data_in,
+    output logic fifo_pop_out,
 
     // SRAM control
-    output logic sram_cs,
-    output logic [ADDR_WIDTH - 1 : 0] sram_addr,
+    output logic sram_cs_out,
+    output logic [ADDR_WIDTH - 1 : 0] sram_addr_out,
 
     // Input
-    input logic load_done_pulse,
+    input logic load_done_pulse_in,
 
     // Output
-    output logic compute_done_pulse
+    output logic compute_done_pulse_out
 );
 
 endmodule

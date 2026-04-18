@@ -4,21 +4,23 @@
 #include "hw/shared/verilator_test_fixture.h"
 #include "Vsystolic_array.h"
 
+typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixXiRM;
+
 using SystolicArrayTest = VerilatorTestFixture<Vsystolic_array>;
 
 TEST_F(SystolicArrayTest, RandomMatrixMultiplyLifecycle) {
     start_tracing("systolic_array_rand_matmul_test.fst");
 
     const int DATA_WIDTH = 8;
-    int max_val = (1 << DATA_WIDTH) - 1;
+    int max_val = (1 << DATA_WIDTH);
     
-    Eigen::MatrixXi A = Eigen::MatrixXi::Random(SIZE, SIZE).cwiseAbs().unaryExpr(
+    MatrixXiRM A = MatrixXiRM::Random(SIZE, SIZE).cwiseAbs().unaryExpr(
         [max_val](int x) { return x % max_val; }
     );
-    Eigen::MatrixXi B = Eigen::MatrixXi::Random(SIZE, SIZE).cwiseAbs().unaryExpr(
+    MatrixXiRM B = MatrixXiRM::Random(SIZE, SIZE).cwiseAbs().unaryExpr(
         [max_val](int x) { return x % max_val; }
     );
-    Eigen::MatrixXi C_expected = A * B; 
+    MatrixXiRM C_expected = A * B; 
 
     dut->rst_n = 0;
     tick(dut->clk);
@@ -41,7 +43,7 @@ TEST_F(SystolicArrayTest, RandomMatrixMultiplyLifecycle) {
     // Phase 2: Stream Activations & Catch Outputs
     // Add 1 extra cycle to account for the new data delay pipeline
     int TOTAL_CYCLES = 3 * SIZE + 1; 
-    Eigen::MatrixXi deskewed_C = Eigen::MatrixXi::Zero(SIZE, SIZE);
+    MatrixXiRM deskewed_C = MatrixXiRM::Zero(SIZE, SIZE);
 
     for (int t = 0; t < TOTAL_CYCLES; t++) {
         std::vector<uint32_t> left_in_array(SIZE, 0);
@@ -60,7 +62,8 @@ TEST_F(SystolicArrayTest, RandomMatrixMultiplyLifecycle) {
         set_pin(dut->left_switch_in, switch_in_array, 1);
         tick(dut->clk); 
         
-        std::vector<uint32_t> out_array = get_pin(dut->bottom_out, SIZE, 32);
+        std::vector<uint32_t> out_array;
+        get_pin(dut->bottom_out, out_array, SIZE, 32);
         
         for (int c = 0; c < SIZE; c++) {
             // Deskew logic must also shift by 1 to accommodate the data delay

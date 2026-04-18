@@ -10,21 +10,21 @@ module load_fsm #(
     input logic rst_n,
 
     // Fifo control
-    input logic fifo_empty,
-    input weight_load_cmd_t fifo_data_out,
-    output logic fifo_pop,
+    input logic fifo_empty_in,
+    input weight_load_cmd_t fifo_data_in,
+    output logic fifo_pop_out,
 
     // DMA control signal
-    input logic dma_done_pulse,
+    input logic dma_done_pulse_in,
 
     // SRAM driver
-    output logic sram_cs,
-    output logic [ADDR_WIDTH - 1 : 0] sram_addr,
+    output logic sram_cs_out,
+    output logic [ADDR_WIDTH - 1 : 0] sram_addr_out,
 
     // Systolic array driver
-    output logic weight_valid,
-    output logic force_zero,
-    output logic load_done_pulse
+    output logic weight_valid_out,
+    output logic force_zero_out,
+    output logic load_done_pulse_out
 );
     typedef enum logic [2:0] {IDLE, POPPING, WAITING, LOADING, PADDING} state_t;
     state_t state, next_state;
@@ -53,9 +53,9 @@ module load_fsm #(
         end
     end
 
-    assign weight_valid = valid_pipeline[READ_LATENCY - 1];
-    assign force_zero = zero_pipeline[READ_LATENCY - 1];
-    assign load_done_pulse = done_pipeline[READ_LATENCY - 1];
+    assign weight_valid_out = valid_pipeline[READ_LATENCY - 1];
+    assign force_zero_out = zero_pipeline[READ_LATENCY - 1];
+    assign load_done_pulse_out = done_pipeline[READ_LATENCY - 1];
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -66,12 +66,12 @@ module load_fsm #(
         end else begin
             state <= next_state;
             if (state == POPPING) begin
-                current_addr <= fifo_data_out.base_addr[AWIDTH - 1 : 0] + fifo_data_out.row_count - 1;
-                sram_rows_remaining <= fifo_data_out.row_count;
-                pad_rows_remaining <= SIZE - fifo_data_out.row_count;
+                current_addr <= fifo_data_in.base_addr[ADDR_WIDTH - 1 : 0] + fifo_data_in.row_count - 1;
+                sram_rows_remaining <= fifo_data_in.row_count;
+                pad_rows_remaining <= SIZE - fifo_data_in.row_count;
             end else if (state == LOADING) begin
                 current_addr <= current_addr - 1;
-                sram_rows_remaining <= rows_remaining - 1;
+                sram_rows_remaining <= sram_rows_remaining - 1;
             end else if (state == PADDING) begin
                 pad_rows_remaining <= pad_rows_remaining - 1;
             end
@@ -80,25 +80,25 @@ module load_fsm #(
 
     always_comb begin
         next_state = state;
-        fifo_pop = 1'b0;
-        sram_cs = 1'b0;
-        sram_addr = current_addr;
+        fifo_pop_out = 1'b0;
+        sram_cs_out = 1'b0;
+        sram_addr_out = current_addr;
         fsm_shift_valid = 1'b0;
         fsm_force_zero = 1'b0;
         fsm_load_done = 1'b0;
 
         unique case (state)
             IDLE: begin
-                if (!fifo_empty) begin
-                    fifo_pop = 1'b1;
+                if (!fifo_empty_in) begin
+                    fifo_pop_out = 1'b1;
                     next_state = POPPING;
                 end
             end
 
             POPPING: begin
-                if (fifo_data_out.wait_for_dma && !dma_done_pulse)
+                if (fifo_data_in.wait_for_dma && !dma_done_pulse_in)
                     next_state = WAITING;
-                else if (fifo_data_out.row_count > 0) begin
+                else if (fifo_data_in.row_count > 0) begin
                     next_state = LOADING;
                 end else begin
                     next_state = PADDING;
@@ -106,7 +106,7 @@ module load_fsm #(
             end
 
             WAITING: begin
-                if (dma_done_pulse) begin
+                if (dma_done_pulse_in) begin
                     if (sram_rows_remaining > 0) begin
                         next_state = LOADING;
                     end else begin
@@ -115,9 +115,10 @@ module load_fsm #(
                 end else begin
                     next_state = WAITING;
                 end
+            end
 
             LOADING: begin
-                sram_cs = 1'b1;
+                sram_cs_out = 1'b1;
                 fsm_shift_valid = 1'b1;
 
                 if (sram_rows_remaining == 1) begin

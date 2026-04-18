@@ -10,12 +10,6 @@ bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
 bazel_dep(name = "eigen", version = "5.0.1.bcr.1")
 
-bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
-git_override(
-    module_name = "hedron_compile_commands",
-    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-    commit = "abb61a688167623088f8768cc9264798df6a9d10"
-)
 
 # ==========================================
 # Python & UV Integration
@@ -42,4 +36,4 @@ use_repo(pip, "pypi")
 bazel_dep(name = "rules_verilator", version = "0.2.0")
 bazel_dep(name = "verilator", version = "5.046.bcr.3")
 
-register_toolchains("@rules_verilator//verilator:verilator_toolchain")
+register_toolchains("//hw/shared:verilator_toolchain")

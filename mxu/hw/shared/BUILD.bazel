@@ -1,3 +1,6 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_verilator//verilator:defs.bzl", "verilator_toolchain")
+
 cc_library(
     name = "verilator_pins",
     hdrs = ["verilator_pins.h"],
@@ -7,5 +10,19 @@ cc_library(
 cc_library(
     name = "verilator_test_fixture",
     hdrs = ["verilator_test_fixture.h"],
-    visibility = ["//visibility:public"]
+    visibility = ["//visibility:public"],
+    deps = ["@verilator//:verilated"],
+)
+
+verilator_toolchain(
+    name = "verilator_toolchain_impl",
+    verilator = "@verilator//:verilator_executable",
+    deps = ["@verilator//:verilated"],
+)
+
+toolchain(
+    name = "verilator_toolchain",
+    toolchain = ":verilator_toolchain_impl",
+    toolchain_type = "@rules_verilator//verilator:toolchain_type",
+    visibility = ["//visibility:public"],
 )

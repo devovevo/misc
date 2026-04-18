@@ -34,8 +34,8 @@ void set_pin(T& pin, const std::vector<uint32_t>& arr, int width) {
 
 // --- THE MAGICAL C++17 UNPACKER (UB PATCHED) ---
 template <typename T>
-std::vector<uint32_t> get_pin(const T& pin, int num_elements, int width) {
-    std::vector<uint32_t> res(num_elements, 0);
+void get_pin(const T& pin, std::vector<uint32_t>& res, int num_elements, int width) {
+    res.resize(num_elements);
     if constexpr (std::is_integral_v<T>) {
         uint64_t packed = static_cast<uint64_t>(pin);
         for (int i = 0; i < num_elements; i++) {
@@ -54,5 +54,4 @@ std::vector<uint32_t> get_pin(const T& pin, int num_elements, int width) {
             res[i] = val & ((1ULL << width) - 1);
         }
     }
-    return res;
 }

@@ -6,27 +6,27 @@ module flip_flop_sram#(
     input logic clk,
     input logic rst_n,
 
-    input logic cs,
-    input logic [ADDR_WIDTH - 1 : 0 ] addr,
-    input logic [DATA_WIDTH - 1 : 0 ] wdata,
-    input logic we,
+    input logic cs_in,
+    input logic [ADDR_WIDTH - 1 : 0 ] addr_in,
+    input logic [DATA_WIDTH - 1 : 0 ] wdata_in,
+    input logic we_in,
 
-    output logic [DATA_WIDTH - 1 : 0] rdata
+    output logic [DATA_WIDTH - 1 : 0] rdata_out
 );
-    logic [DATA_WIDTH - 1 : 0] mem [(1 << ADDR_WIDTH) - 1] /*verilator public*/
+    logic [DATA_WIDTH - 1 : 0] mem [(1 << ADDR_WIDTH) - 1];
     logic [DATA_WIDTH - 1 : 0] rdata_pipeline[READ_LATENCY];
 
-    assign rdata = rdata_pipeline[READ_LATENCY - 1];
+    assign rdata_out = rdata_pipeline[READ_LATENCY - 1];
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            rdata_pipeline <= '0;
-        end else if (cs) begin
-            if (we) begin
-                mem[addr] <= wdata;
+            rdata_pipeline <= '{default: '0};
+        end else if (cs_in) begin
+            if (we_in) begin
+                mem[addr_in] <= wdata_in;
             end
 
-            rdata_pipeline[0] <= mem[addr];
+            rdata_pipeline[0] <= mem[addr_in];
             for (int i = 1; i < READ_LATENCY; i++) begin
                rdata_pipeline[i] <= rdata_pipeline[i - 1];
             end
