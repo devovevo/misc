@@ -1,0 +1,29 @@
+[project]
+name = "mlir-test"
+version = "0.1.0"
+dependencies = [
+    "torch-mlir==20260327.764",
+    "torch==2.12.0.dev20260327+cpu",
+    "torchvision==0.26.0.dev20260327+cpu"
+]
+requires-python = ">=3.12"
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "torch-mlir-dev"
+url = "https://github.com/llvm/torch-mlir-release/releases/expanded_assets/dev-wheels"
+format = "flat"
+explicit = true
+
+[tool.uv.sources]
+torch-mlir = { index = "torch-mlir-dev" }
+torch = { index = "pytorch-nightly" }
+torchvision = { index = "pytorch-nightly" }
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
