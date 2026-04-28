@@ -1,0 +1,56 @@
+# Ignore build output directory
+/build
+/export
+
+# Ignore object files and dependent files
+.o
+.d
+
+#Ignore logs folder and log files
+/logs
+.log
+
+#Ignore lock files
+.lock
+
+.bin
+.pdi
+.vitisWorkspace.json
+
+_ide/logs
+_ide/.wsdata
+
+# --- Vivado Junk ---
+*.log
+*.jou
+*.pb
+*.vdi
+*.str
+*.dir
+.Xil/
+vivado_hello_world.cache/
+vivado_hello_world.hw/
+vivado_hello_world.ip_user_files/
+vivado_hello_world.runs/
+vivado_hello_world.sim/
+
+# --- Vitis Junk ---
+**/build/
+**/_ide/
+**/logs/
+*.py
+*.checksum
+version.ini
+
+# --- Binary/Output Junk ---
+*.elf
+*.bit
+*.bin
+*.elf.size
+
+# --- Vitis Platform ---
+zyboz720/
+vivado_hello_world.gen/
+.cache/
+.clangd/
+.compile_commands.json
