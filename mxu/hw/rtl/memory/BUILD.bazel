@@ -1,1 +1,40 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_verilator//verilator:defs.bzl", "verilator_cc_library")
+load("@rules_verilator//verilog:defs.bzl", "verilog_library")
+
+verilog_library(
+    name = "flip_flop_sram_sv",
+    srcs = [
+        "flip_flop_sram.sv"
+    ]
+)
+
+verilator_cc_library(
+    name = "flip_flop_sram_cc",
+    module = ":flip_flop_sram_sv",
+    module_top = "flip_flop_sram",
+    vopts = [
+        "--trace-fst",
+        "--trace-structs"
+    ]
+)
+
+cc_test(
+    name = "test_flip_flop_sram",
+    size = "small",
+    srcs = [
+        "test_flip_flop_sram.cpp"
+    ],
+    copts = [
+        "-std=c++17"
+    ],
+    deps = [
+        ":flip_flop_sram_cc", 
+        "//hw/shared:verilator_pins",
+        "//hw/shared:verilator_test_fixture",
+        "@eigen",
+        "@googletest//:gtest_main"
+    ]
+)
+
 exports_files(["flip_flop_sram.sv"])

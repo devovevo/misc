@@ -1,6 +1,6 @@
 .envrc
-terraform.tfstate
-terraform.tfstate.backup
+*.tfstate
+*.tfstate.backup
 .venv/
 .terraform/
 config

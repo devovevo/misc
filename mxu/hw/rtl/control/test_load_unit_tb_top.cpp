@@ -11,6 +11,7 @@ using LoadUnitTest = VerilatorTestFixture<Vload_unit_tb_top>;
 TEST_F(LoadUnitTest, RandomMatrixLoadLifecycle) {
     start_tracing("load_unit_rand_matrix_load_test.fst");
 
+    const int READ_LATENCY = 3;
     const int DATA_WIDTH = 8;
     const int ADDR_WIDTH = 16;
 
@@ -20,6 +21,14 @@ TEST_F(LoadUnitTest, RandomMatrixLoadLifecycle) {
             [max_val](int x) { return x % max_val; }
     );
 
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            cout << W(i, j) << " ";
+        }
+
+        cout << endl;
+    }
+
     dut->rst_n = 0;
     dut->fifo_empty_in = 1;
     tick(dut->clk);
@@ -27,21 +36,24 @@ TEST_F(LoadUnitTest, RandomMatrixLoadLifecycle) {
     tick(dut->clk);
 
     dut->dma_we_in = 1;
+    dut->dma_cs_in = 1;
 
     std::vector<uint32_t> dma_addr = {0};
-    std::vector<uint32_t> dma_wdata = {0};
+    std::vector<uint32_t> dma_wdata(SIZE, 0);
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
-            dma_wdata[0] = W(i, j);
-            set_pin(dut->dma_addr_in, dma_addr, ADDR_WIDTH);
-            set_pin(dut->dma_wdata_in, dma_wdata, DATA_WIDTH);
-            tick(dut->clk);
-
-            dma_addr[0] += 1;
+            dma_wdata[j] = W(i, j);
         }
+
+        set_pin(dut->dma_addr_in, dma_addr, ADDR_WIDTH);
+        set_pin(dut->dma_wdata_in, dma_wdata, DATA_WIDTH);
+        tick(dut->clk);
+
+        dma_addr[0] += 1;
     }
 
     dut->dma_we_in = 0;
+    dut->dma_cs_in = 0;
     dut->dma_done_pulse_in = 1;
     tick(dut->clk);
     dut->dma_done_pulse_in = 0;
@@ -63,9 +75,24 @@ TEST_F(LoadUnitTest, RandomMatrixLoadLifecycle) {
     EXPECT_EQ(dut->fifo_pop_out, 0)
         << "Expected fifo pop out to be false, but was true";
 
-    std::vector<uint32_t> top_shadow;
+    tick(dut->clk); // Clock again, FSM should transition to LOADING
+
+    // We now need to wait for read latency cycles to saturate the pipeline and start reading
+    for (int i = 0; i < READ_LATENCY; i++) {
+        tick(dut->clk);
+    }
+
+    std::vector<uint32_t> top_shadow(SIZE, 0);
     for (int i = 0; i < SIZE; i++) {
+        get_pin(dut->top_shadow_out, top_shadow, SIZE, DATA_WIDTH);
         for (int j = 0; j < SIZE; j++) {
-            get_pin(dut->top_shadow_out, top_shadow, 
+            EXPECT_EQ(top_shadow[j], W(SIZE - i - 1, j)) << "Expected top shadow and W(SIZE - i - 1, j) to be equal with "
+                << " i: " << i << " j: " << j << " whereas we actually"
+                << " got top_shadow: " << top_shadow[j] << " and W(SIZE - i - 1, j): "
+                << W(SIZE - i - 1, j);
+        }
+
+        tick(dut->clk);
+    }
 }
 

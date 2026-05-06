@@ -2,7 +2,8 @@ import mxu_pkg::*;
 
 module compute_fsm#(
    parameter int SIZE = 3,
-   parameter int ADDR_WIDTH = 32
+   parameter int ADDR_WIDTH = 32,
+   parameter int READ_LATENCY = 3
 )(
     // Control pins
     input logic clk,
@@ -23,6 +24,11 @@ module compute_fsm#(
     // Output
     output logic compute_done_pulse_out
 );
+    typedef enum logic [2:0] { IDLE, POPPING, WAITING, LOADING, PADDING } state_t;
+    state_t state, next_state;
+
+    logic [ADDR_WIDTH - 1 : 0] cur_addr;
+
 
 endmodule
 

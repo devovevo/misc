@@ -1,7 +1,7 @@
 module flip_flop_sram#(
-    parameter int DATA_WIDTH = 256,
+    parameter int DATA_WIDTH = 8,
     parameter int ADDR_WIDTH = 16,
-    parameter int READ_LATENCY = 1
+    parameter int READ_LATENCY = 3
 )(
     input logic clk,
     input logic rst_n,
@@ -26,10 +26,10 @@ module flip_flop_sram#(
                 mem[addr_in] <= wdata_in;
             end
 
-            rdata_pipeline[0] <= mem[addr_in];
-            for (int i = 1; i < READ_LATENCY; i++) begin
+            for (int i = READ_LATENCY - 1; i > 0; i--) begin
                rdata_pipeline[i] <= rdata_pipeline[i - 1];
             end
+            rdata_pipeline[0] <= mem[addr_in];
         end
     end
 endmodule

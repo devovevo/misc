@@ -2,15 +2,16 @@ import mxu_pkg::*;
 
 module load_unit_tb_top#(
     parameter int SIZE = 3,
-    parameter int DATA_WIDTH = 16,
+    parameter int DATA_WIDTH = 8,
     parameter int ADDR_WIDTH = 16,
     parameter int READ_LATENCY = 3
 )(
     input logic clk,
     input logic rst_n,
 
+    input logic dma_cs_in,
     input logic [ADDR_WIDTH - 1 : 0] dma_addr_in,
-    input logic [DATA_WIDTH - 1 : 0] dma_wdata_in,
+    input logic [(DATA_WIDTH * SIZE) - 1 : 0] dma_wdata_in,
     input logic dma_we_in,
     input logic dma_done_pulse_in,
 
@@ -18,7 +19,7 @@ module load_unit_tb_top#(
     input weight_load_cmd_t fifo_data_in,
     output logic fifo_pop_out,
 
-    output logic [DATA_WIDTH - 1 : 0] top_shadow_out,
+    output logic [(DATA_WIDTH * SIZE) - 1 : 0] top_shadow_out,
     output logic load_enable_out,
     output logic load_done_pulse_out
 );
@@ -54,16 +55,19 @@ module load_unit_tb_top#(
         end
     end
 
-    logic [DATA_WIDTH - 1 : 0] rdata;
+    logic true_sram_cs;
+    assign true_sram_cs = sram_cs | dma_cs_in;
+
+    logic [(SIZE * DATA_WIDTH) - 1 : 0] rdata;
 
     flip_flop_sram#(
-        .DATA_WIDTH(DATA_WIDTH),
+        .DATA_WIDTH(DATA_WIDTH * SIZE),
         .ADDR_WIDTH(ADDR_WIDTH),
         .READ_LATENCY(READ_LATENCY)
     ) sram_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .cs_in(sram_cs),
+        .cs_in(true_sram_cs),
         .addr_in(true_sram_addr),
         .wdata_in(dma_wdata_in),
         .we_in(dma_we_in),
