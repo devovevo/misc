@@ -31,5 +31,3 @@ module compute_fsm#(
 
 
 endmodule
-
-

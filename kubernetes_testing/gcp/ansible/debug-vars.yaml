@@ -4,7 +4,7 @@
   tasks:
     - name: Show me the IPs
       debug:
-        msg: 
+        msg:
           - "Node Name: {{ inventory_hostname }}"
           - "Public IP (ansible_host): {{ ansible_host }}"
           - "Internal IP (internal_ip): {{ internal_ip }}"

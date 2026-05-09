@@ -40,6 +40,6 @@ target_link_options(
 # 2. Explicitly set the debug postfix for both EXECUTABLES
 set_target_properties(
     flash_attention_cpp flash_attention_cuda
-    PROPERTIES 
+    PROPERTIES
     DEBUG_POSTFIX "_d"
 )

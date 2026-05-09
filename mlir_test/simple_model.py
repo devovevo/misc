@@ -1,16 +1,18 @@
 import torch
+
 # New binding locations for 2026 nightlies
-from torch_mlir._mlir_libs import _mlir
 from _mlir import ir, passmanager
 
 from torch_mlir.extras.fx_importer import FxImporter
 from torch_mlir.dialects import torch as torch_dialect
 from torch_mlir.dialects import func, linalg, arith
 
+
 # 1. Simple model for tracing
 class MyModel(torch.nn.Module):
     def forward(self, x):
         return torch.relu(x + x)
+
 
 model = MyModel()
 example_arg = torch.randn(2, 2)
@@ -31,13 +33,12 @@ module = importer.module_op
 # 4. Configure the Pass Manager for a full trace
 # 'torch-backend-pipeline' is the standard "lowering" route
 pm = passmanager.PassManager.parse(
-    "builtin.module(torch-backend-pipeline)", 
-    context=context
+    "builtin.module(torch-backend-pipeline)", context=context
 )
 
 # Enable IR Printing: This is the magic TPU-style dump
 context.enable_multithreading(False)
-pm.enable_ir_printing() 
+pm.enable_ir_printing()
 
 print("--- EXECUTING PASS-BY-PASS LOWERING ---")
 pm.run(module)

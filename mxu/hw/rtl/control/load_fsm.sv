@@ -46,7 +46,7 @@ module load_fsm #(
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             valid_pipeline<= '0;
-            cs_pipeline   <= '0; 
+            cs_pipeline   <= '0;
             zero_pipeline <= '0;
             done_pipeline <= '0;
         end else begin

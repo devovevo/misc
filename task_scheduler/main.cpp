@@ -1,118 +1,121 @@
-#include <thread>
-#include <queue>
 #include <functional>
-#include <utility>
+#include <queue>
 #include <random>
+#include <thread>
+#include <utility>
 
 using namespace std;
 
-template<typename T, size_t n>
-class WorkStealingQueue {
+template <typename T, size_t n> class WorkStealingQueue {
 
-	public:
-		WorkStealingQueue() : head(0), tail(0) {};
+public:
+  WorkStealingQueue() : head(0), tail(0) {};
 
-		bool push(const T& item) {
-			size_t cur_head = head.load(memory_order_relaxed);
-			size_t cur_tail = tail.load(memory_order_acquire);
+  bool push(const T &item) {
+    size_t cur_head = head.load(memory_order_relaxed);
+    size_t cur_tail = tail.load(memory_order_acquire);
 
-			if (cur_head - cur_tail >= n) return false;
-			
-			buff[cur_head % n] = item;
-			head.store(cur_head + 1, memory_order_release);
+    if (cur_head - cur_tail >= n)
+      return false;
 
-			return true;
-		}
+    buff[cur_head % n] = item;
+    head.store(cur_head + 1, memory_order_release);
 
-		optional<T> pop() {
-			size_t cur_head = head.load(memory_order_relaxed);
-			if (cur_head == 0) return {};
+    return true;
+  }
 
-			head.store(cur_head - 1, memory_order_relaxed);
-			atomic_thread_fence(memory_order_seq_cst);
+  optional<T> pop() {
+    size_t cur_head = head.load(memory_order_relaxed);
+    if (cur_head == 0)
+      return {};
 
-			size_t cur_tail = tail.load(memory_order_acquire);
-			if (cur_head <= cur_tail) {
-				head.store(cur_head, memory_order_relaxed);
-				return {};
-			}
+    head.store(cur_head - 1, memory_order_relaxed);
+    atomic_thread_fence(memory_order_seq_cst);
 
-			T item = buff[(cur_head - 1) % n];
+    size_t cur_tail = tail.load(memory_order_acquire);
+    if (cur_head <= cur_tail) {
+      head.store(cur_head, memory_order_relaxed);
+      return {};
+    }
 
-			if (cur_head == cur_tail + 1) {
-				if (!tail.compare_exchange_strong(cur_tail, cur_tail + 1, memory_order_seq_cst, memory_order_relaxed)) {
-					head.store(cur_head, memory_order_relaxed);
-					return {};
-				}
+    T item = buff[(cur_head - 1) % n];
 
-				head.store(cur_head, memory_order_relaxed);
-			}  
+    if (cur_head == cur_tail + 1) {
+      if (!tail.compare_exchange_strong(cur_tail, cur_tail + 1,
+                                        memory_order_seq_cst,
+                                        memory_order_relaxed)) {
+        head.store(cur_head, memory_order_relaxed);
+        return {};
+      }
 
-			return item;
-		}
+      head.store(cur_head, memory_order_relaxed);
+    }
 
+    return item;
+  }
 
-		optional<T> steal() {
-			size_t cur_tail = tail.load(memory_order_acquire);
-			size_t cur_head = head.load(memory_order_acquire);
-		
-			if (cur_tail == cur_head) return {};
+  optional<T> steal() {
+    size_t cur_tail = tail.load(memory_order_acquire);
+    size_t cur_head = head.load(memory_order_acquire);
 
-			T cur_item = buff[cur_tail % n];
-			if (tail.compare_exchange_weak(cur_tail, cur_tail + 1, memory_order_seq_cst, memory_order_relaxed)) {
-				return cur_item;
-			}
+    if (cur_tail == cur_head)
+      return {};
 
-			return {};
-		}
+    T cur_item = buff[cur_tail % n];
+    if (tail.compare_exchange_weak(cur_tail, cur_tail + 1, memory_order_seq_cst,
+                                   memory_order_relaxed)) {
+      return cur_item;
+    }
 
-	private:
-		T buff[n];
-		alignas(128) atomic<size_t> head;
-		alignas(128) atomic<size_t> tail;
+    return {};
+  }
+
+private:
+  T buff[n];
+  alignas(128) atomic<size_t> head;
+  alignas(128) atomic<size_t> tail;
 };
 
-template<size_t n>
-class TaskScheduler {
-	public:
-		TaskScheduler() : round_robin_idx(0) {
-			for (size_t i = 0; i < n; i++) {
-				pool[i] = thread([i, &queues]() {
-					random_device rd;
-					mt19937 gen(rd());
+template <size_t n> class TaskScheduler {
+public:
+  TaskScheduler() : round_robin_idx(0) {
+    for (size_t i = 0; i < n; i++) {
+      pool[i] = thread([i, &queues]() {
+        random_device rd;
+        mt19937 gen(rd());
 
-					uniform_int_distribution<size_t> distrib(0, n - 1);
+        uniform_int_distribution<size_t> distrib(0, n - 1);
 
-					while (true) {
-						optional<function<void()>> task = queues[i].pop();
-						if (!task) {
-							size_t rand_idx = distrib(gen);
-							task = queues[rand_idx].steal();
-						}
+        while (true) {
+          optional<function<void()>> task = queues[i].pop();
+          if (!task) {
+            size_t rand_idx = distrib(gen);
+            task = queues[rand_idx].steal();
+          }
 
+          if (task) {
+            (*task)();
+          }
+        }
+      });
+    }
+  }
 
-						if (task) {
-							(*task)();
-						}
-					}
-				});
-			}
-		}
+  bool enqueue(function<void()> task) {
+    for (size_t i = 0; i < n; i++) {
+      size_t tidx = (round_robin_idx + i) % n;
+      round_robin_idx++;
 
-		bool enqueue(function<void()> task) {
-			for (size_t i = 0; i < n; i++) {
-				size_t tidx = (round_robin_idx + i) % n;
-				round_robin_idx++;
-				
-				bool succ = queues[tidx].push(task);
-				if (succ) return true;
-			}
+      bool succ = queues[tidx].push(task);
+      if (succ)
+        return true;
+    }
 
-			return false;
-		}
-		
-	private:
-		thread pool[n];
-		WorkStealingQueue<function<void()>> queues[n];
-		size_t round_robin_idx;
+    return false;
+  }
+
+private:
+  thread pool[n];
+  WorkStealingQueue<function<void()>> queues[n];
+  size_t round_robin_idx;
 };

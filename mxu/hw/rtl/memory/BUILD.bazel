@@ -29,7 +29,7 @@ cc_test(
         "-std=c++17"
     ],
     deps = [
-        ":flip_flop_sram_cc", 
+        ":flip_flop_sram_cc",
         "//hw/shared:verilator_pins",
         "//hw/shared:verilator_test_fixture",
         "@eigen",

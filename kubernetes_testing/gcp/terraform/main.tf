@@ -1,6 +1,6 @@
 provider "google" {
-  region  = "us-east1"
-  zone    = "us-east1-b"
+  region = "us-east1"
+  zone   = "us-east1-b"
 }
 
 resource "google_compute_network" "k8s_vpc" {
@@ -39,7 +39,7 @@ resource "google_compute_instance" "control_plane" {
   name         = "control-plane-1"
   machine_type = "e2-medium"
   zone         = "us-east1-b"
-  
+
   # THE MAGIC TAG FOR ANSIBLE
   labels = {
     role = "k8s-master"
@@ -56,7 +56,7 @@ resource "google_compute_instance" "control_plane" {
   network_interface {
     network    = google_compute_network.k8s_vpc.id
     subnetwork = google_compute_subnetwork.k8s_subnet.id
-    access_config {} 
+    access_config {}
   }
   /*
   scheduling {
@@ -73,7 +73,7 @@ resource "google_compute_instance" "workers" {
   name         = "worker-${count.index + 1}"
   machine_type = "e2-medium"
   zone         = "us-east1-b"
-  
+
   # THE MAGIC TAG FOR ANSIBLE
   labels = {
     role = "k8s-worker"
@@ -90,7 +90,7 @@ resource "google_compute_instance" "workers" {
   network_interface {
     network    = google_compute_network.k8s_vpc.id
     subnetwork = google_compute_subnetwork.k8s_subnet.id
-    access_config {} 
+    access_config {}
   }
   /*
   scheduling {

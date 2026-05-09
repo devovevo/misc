@@ -1,0 +1,9 @@
+plugin: google.cloud.gcp_compute
+projects:
+  - "hello-tofu"
+auth_kind: application
+groups:
+  rdma-testers: "'rdma-tester' in (labels.role | default([]))"
+compose:
+  ansible_host: networkInterfaces[0].accessConfigs[0].natIP
+  internal_ip: networkInterfaces[0].networkIP

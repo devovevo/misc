@@ -20,7 +20,7 @@ I'd probably want to make this parameterizable with the SRAM read latency,
 address width, and data width, but also the output width, so how many
 instructions to fetch at any given time and output. Implementation wise,
 since L1 cache size may be bigger than what we want to fetch, we can even
-fetch into a wide buffer and then mux out what we want. We could put an 
+fetch into a wide buffer and then mux out what we want. We could put an
 optional fetch buffer here, but I think it's best to leave that complexity
 internal to the module
 
@@ -32,5 +32,3 @@ from fetch and get the party started. Most things would be direct mappings to
 micro-ops, but we might also need to worry about mem ops (adding to get addr
 then store/load). For this, maybe we'd need an extra cycle? It shouldn't really
 matter.
-
-

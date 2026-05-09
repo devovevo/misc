@@ -92,7 +92,7 @@ a_{22} b_{21} + a_{21} b_{11} & a_{22} b_{22} + a_{21} b_{12}
 \end{bmatrix}
 $$
 
-This is the correct product, meaning that we have proved (at least in the 2x2 case) that the systolic array does what we expect it to. Generalizing, we'll need to (1) feed the rows of the transpose of $A$ to the rows of our array (2) start feeding values from row $i$ into our array at cycle $i$ (assuming we 0-index), and (3) delay collecting the results of column $i$ until cycle $n + i - 1$. 
+This is the correct product, meaning that we have proved (at least in the 2x2 case) that the systolic array does what we expect it to. Generalizing, we'll need to (1) feed the rows of the transpose of $A$ to the rows of our array (2) start feeding values from row $i$ into our array at cycle $i$ (assuming we 0-index), and (3) delay collecting the results of column $i$ until cycle $n + i - 1$.
 
 ## Systolic Array Loading
 

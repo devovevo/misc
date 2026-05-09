@@ -14,7 +14,7 @@
       # We pull the stdout directly from the first master node in your inventory group
       command: "{{ hostvars[groups['master'][0]]['master_join_output']['stdout'] }}"
       register: join_result
-      ignore_errors: yes 
+      ignore_errors: yes
 
     - name: Final Status
       when: inventory_hostname in groups['workers']

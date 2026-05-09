@@ -1,7 +1,7 @@
 /******************************************************************************
-* Copyright (C) 2023  - 2024 Advanced Micro Devices, Inc. All Rights Reserved.
-* SPDX-License-Identifier: MIT
-******************************************************************************/
+ * Copyright (C) 2023  - 2024 Advanced Micro Devices, Inc. All Rights Reserved.
+ * SPDX-License-Identifier: MIT
+ ******************************************************************************/
 
 #ifndef __PLATFORM_H_
 #define __PLATFORM_H_

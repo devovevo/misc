@@ -7,10 +7,12 @@ num_heads = 1
 seq_len = 128
 head_dim = 16
 
+
 # 2. Initialize Matrices: Entries = Row Number
 # We use .float() because your kernel likely uses float32
 def row_init(rows, cols):
     return torch.arange(rows).view(-1, 1).repeat(1, cols).float() / seq_len
+
 
 # Create Q, K, V (adding batch and head dims for PyTorch)
 q = row_init(seq_len, head_dim).reshape(batch_size, num_heads, seq_len, head_dim)
