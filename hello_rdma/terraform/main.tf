@@ -26,6 +26,11 @@ resource "google_compute_firewall" "allow_rdma" {
     ports    = ["4791"]
   }
 
+  allow {
+    protocol = "tcp"
+    ports    = ["18515"]
+  }
+
   source_ranges = ["10.0.1.0/24"]
 }
 

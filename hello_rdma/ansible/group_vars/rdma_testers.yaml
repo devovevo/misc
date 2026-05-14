@@ -1,0 +1,9 @@
+# GCP Connection Config
+ansible_connection: "google.cloud.iap"
+ansible_gcloud_project: "hello-tofu"
+ansible_gcloud_zone: "us-east1-b"
+ansible_user: "evan-vera"
+
+# Soft-RoCE Config
+roce_interface: "ens4"
+roce_link_name: "rxe0"

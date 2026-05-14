@@ -1,0 +1,43 @@
+- name: Set up Soft RoCE
+  hosts: rdma_testers
+  become: True
+  tasks:
+    - name: Install RDMA packages and kernel extras
+      ansible.builtin.apt:
+        name:
+          - rdma-core
+          - infiniband-diags
+          - iproute2
+          - ibverbs-utils
+          # This is the critical line to add:
+          - "linux-modules-extra-{{ ansible_kernel }}"
+        state: present
+        update_cache: yes
+
+    - name: Ensure rdma_rxe module is loaded immediately
+      community.general.modprobe:
+        name: rdma_rxe
+        state: present
+
+    - name: Ensure rdma_rxe module loads on boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/rdma_rxe.conf
+        content: "rdma_rxe"
+
+    - name: Create Systemd service for Soft-RoCE
+      ansible.builtin.template:
+        src: roce-rxe.service.j2
+        dest: /etc/systemd/system/roce-rxe.service
+      notify: Reload systemd
+
+    - name: Enable and start Soft-RoCE service
+      ansible.builtin.systemd:
+        name: roce-rxe.service
+        enabled: yes
+        # Change state to restarted to ensure it tries again after the fix
+        state: restarted
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes

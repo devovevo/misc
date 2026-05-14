@@ -1,4 +1,8 @@
-.terraform/
-.terraform.lock.hcl
 .venv/
 .python-version
+.terraform/
+.terraform.lock.hcl
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup

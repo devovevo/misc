@@ -1,0 +1,15 @@
+[Unit]
+Description=Soft-RoCE (RXE) Interface Setup
+After=network-online.target rdma-hw.target
+Requires=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/sbin/modprobe rdma_rxe
+# These variables come from your group_vars
+ExecStart=/usr/bin/rdma link add {{ roce_link_name }} type rxe netdev {{ roce_interface }}
+ExecStop=/usr/bin/rdma link del {{ roce_link_name }}
+
+[Install]
+WantedBy=multi-user.target
